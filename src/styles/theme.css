@@ -1,0 +1,829 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 16px;
+  --background: #ffffff;
+  --foreground: oklch(0.145 0 0);
+  --card: #ffffff;
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: #030213;
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.95 0.0058 264.53);
+  --secondary-foreground: #030213;
+  --muted: #ececf0;
+  --muted-foreground: #717182;
+  --accent: #e9ebef;
+  --accent-foreground: #030213;
+  --destructive: #d4183d;
+  --destructive-foreground: #ffffff;
+  --border: rgba(0, 0, 0, 0.1);
+  --input: transparent;
+  --input-background: #f3f3f5;
+  --switch-background: #cbced4;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: #030213;
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  /**
+  * Default typography styles for HTML elements (h1-h4, p, label, button, input).
+  * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
+  */
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  h1 {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h2 {
+    font-size: var(--text-xl);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h3 {
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h4 {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  label {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  button {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  input {
+    font-size: var(--text-base);
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+}
+
+/* AgileTask Premium UI Refresh - 2026 */
+@layer base {
+  html { scroll-behavior: smooth; }
+  body { background: #f8fbff; }
+  .dark body { background: #020617; }
+}
+
+@layer components {
+  .agile-premium-shell {
+    --agile-blue: 37 99 235;
+    --agile-cyan: 34 211 238;
+    --agile-violet: 124 58 237;
+    --agile-emerald: 16 185 129;
+  }
+
+  .agile-premium-shell .bg-white,
+  .agile-premium-shell .bg-slate-50,
+  .agile-premium-shell .bg-slate-50\/50 {
+    background-color: rgba(255, 255, 255, 0.78) !important;
+    backdrop-filter: blur(22px) saturate(150%);
+    -webkit-backdrop-filter: blur(22px) saturate(150%);
+  }
+
+  .dark .agile-premium-shell .bg-white,
+  .dark .agile-premium-shell .bg-slate-50,
+  .dark .agile-premium-shell .dark\:bg-slate-900,
+  .dark .agile-premium-shell .dark\:bg-slate-950,
+  .dark .agile-premium-shell .dark\:bg-slate-800 {
+    background-color: rgba(15, 23, 42, 0.78) !important;
+    backdrop-filter: blur(24px) saturate(155%);
+    -webkit-backdrop-filter: blur(24px) saturate(155%);
+  }
+
+  .agile-premium-shell .border-slate-100,
+  .agile-premium-shell .border-slate-200,
+  .agile-premium-shell .border-slate-300 {
+    border-color: rgba(148, 163, 184, 0.28) !important;
+  }
+
+  .dark .agile-premium-shell .dark\:border-slate-700,
+  .dark .agile-premium-shell .border-slate-200,
+  .dark .agile-premium-shell .border-slate-100 {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .agile-premium-shell .shadow-sm,
+  .agile-premium-shell .shadow-xl {
+    box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08) !important;
+  }
+
+  .dark .agile-premium-shell .shadow-sm,
+  .dark .agile-premium-shell .shadow-xl {
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28) !important;
+  }
+
+  .agile-premium-shell input,
+  .agile-premium-shell textarea,
+  .agile-premium-shell select {
+    background-color: rgba(255, 255, 255, 0.82) !important;
+    border-color: rgba(148, 163, 184, 0.35) !important;
+  }
+
+  .dark .agile-premium-shell input,
+  .dark .agile-premium-shell textarea,
+  .dark .agile-premium-shell select {
+    background-color: rgba(15, 23, 42, 0.88) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: rgb(241 245 249) !important;
+  }
+
+  .agile-premium-shell button,
+  .agile-premium-shell a {
+    transition-property: color, background-color, border-color, transform, box-shadow, opacity;
+    transition-duration: 220ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .agile-premium-shell button:active,
+  .agile-premium-shell a:active {
+    transform: scale(0.985);
+  }
+
+  .agile-glass-card {
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    background: linear-gradient(135deg, rgba(255,255,255,.86), rgba(255,255,255,.66));
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.1);
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+  }
+
+  .dark .agile-glass-card {
+    border-color: rgba(255,255,255,.11);
+    background: linear-gradient(135deg, rgba(15,23,42,.86), rgba(2,6,23,.62));
+    box-shadow: 0 28px 90px rgba(0, 0, 0, 0.32);
+  }
+
+  .agile-gradient-text {
+    background: linear-gradient(90deg, #0f172a 0%, #2563eb 48%, #7c3aed 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .dark .agile-gradient-text {
+    background: linear-gradient(90deg, #ffffff 0%, #67e8f9 48%, #c4b5fd 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .agile-task-lift:hover {
+    transform: translateY(-4px) scale(1.008);
+    box-shadow: 0 24px 70px rgba(37, 99, 235, 0.14) !important;
+  }
+
+  .dark .agile-task-lift:hover {
+    box-shadow: 0 28px 90px rgba(34, 211, 238, 0.12) !important;
+  }
+
+  .agile-speed-stripes {
+    background-image: repeating-linear-gradient(115deg, rgba(255,255,255,.0) 0, rgba(255,255,255,.0) 18px, rgba(255,255,255,.12) 18px, rgba(255,255,255,.12) 20px);
+  }
+}
+
+/* AgileTask Model 5 — Zenith inspired: mountain glass SaaS */
+@layer components {
+  .model5-shell {
+    background:
+      radial-gradient(circle at 78% 8%, rgba(244, 114, 182, 0.16), transparent 24%),
+      radial-gradient(circle at 52% 12%, rgba(125, 211, 252, 0.24), transparent 28%),
+      linear-gradient(135deg, #eef7ff 0%, #dceeff 42%, #f8fbff 100%);
+  }
+
+  .dark .model5-shell {
+    background:
+      radial-gradient(circle at 76% 8%, rgba(236, 72, 153, 0.12), transparent 24%),
+      radial-gradient(circle at 48% 14%, rgba(56, 189, 248, 0.18), transparent 28%),
+      linear-gradient(135deg, #020617 0%, #06172c 45%, #0b1222 100%);
+  }
+
+  .model5-mountain {
+    background:
+      linear-gradient(140deg, rgba(255,255,255,.0), rgba(255,255,255,.24) 36%, rgba(255,255,255,.0) 58%),
+      linear-gradient(110deg, rgba(14,165,233,.26), rgba(99,102,241,.16)),
+      linear-gradient(180deg, rgba(255,255,255,.28), rgba(14,116,144,.05));
+    clip-path: polygon(0 70%, 10% 48%, 20% 60%, 35% 22%, 49% 64%, 62% 34%, 72% 54%, 84% 14%, 100% 55%, 100% 100%, 0 100%);
+    filter: blur(.2px) drop-shadow(0 30px 60px rgba(15,23,42,.10));
+  }
+
+  .dark .model5-mountain {
+    background:
+      linear-gradient(140deg, rgba(255,255,255,.0), rgba(255,255,255,.16) 36%, rgba(255,255,255,.0) 58%),
+      linear-gradient(110deg, rgba(14,165,233,.22), rgba(99,102,241,.12)),
+      linear-gradient(180deg, rgba(255,255,255,.13), rgba(14,116,144,.02));
+    opacity: .72;
+  }
+
+  .model5-panel {
+    border: 1px solid rgba(255,255,255,.34);
+    background: linear-gradient(135deg, rgba(255,255,255,.58), rgba(255,255,255,.36));
+    box-shadow: 0 30px 100px rgba(15, 23, 42, 0.12);
+    backdrop-filter: blur(30px) saturate(160%);
+    -webkit-backdrop-filter: blur(30px) saturate(160%);
+  }
+
+  .dark .model5-panel {
+    border-color: rgba(255,255,255,.12);
+    background: linear-gradient(135deg, rgba(15,35,63,.68), rgba(4,10,25,.72));
+    box-shadow: 0 34px 110px rgba(0,0,0,.38);
+  }
+
+  .model5-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 34px;
+    border: 1px solid rgba(255,255,255,.22);
+    background:
+      radial-gradient(circle at 85% 10%, rgba(252,165,165,.26), transparent 25%),
+      radial-gradient(circle at 60% 5%, rgba(125,211,252,.32), transparent 32%),
+      linear-gradient(135deg, rgba(29,78,216,.82), rgba(14,116,144,.64) 45%, rgba(15,23,42,.78));
+    box-shadow: 0 35px 100px rgba(8,47,73,.24);
+  }
+
+  .model5-hero::before {
+    content: "";
+    position: absolute;
+    inset: auto -3% -2px 28%;
+    height: 60%;
+    opacity: .78;
+    background: linear-gradient(135deg, rgba(255,255,255,.24), transparent 55%), linear-gradient(120deg, rgba(125,211,252,.32), rgba(99,102,241,.18));
+    clip-path: polygon(0 78%, 12% 50%, 24% 65%, 37% 25%, 50% 72%, 65% 42%, 78% 63%, 90% 31%, 100% 62%, 100% 100%, 0 100%);
+  }
+
+  .model5-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(2,6,23,.58), rgba(2,6,23,.10) 60%, rgba(2,6,23,.38));
+  }
+
+  .model5-hero > * { position: relative; z-index: 1; }
+
+  .model5-chip {
+    border: 1px solid rgba(255,255,255,.16);
+    background: rgba(255,255,255,.12);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  .model5-stat {
+    border: 1px solid rgba(255,255,255,.28);
+    background: linear-gradient(135deg, rgba(255,255,255,.72), rgba(255,255,255,.42));
+    backdrop-filter: blur(26px) saturate(155%);
+    -webkit-backdrop-filter: blur(26px) saturate(155%);
+    box-shadow: 0 22px 65px rgba(15,23,42,.10);
+  }
+
+  .dark .model5-stat {
+    border-color: rgba(255,255,255,.12);
+    background: linear-gradient(135deg, rgba(15,35,63,.72), rgba(4,10,25,.66));
+    box-shadow: 0 28px 90px rgba(0,0,0,.32);
+  }
+
+  .model5-card-hover {
+    transition: transform .25s cubic-bezier(.22,1,.36,1), box-shadow .25s cubic-bezier(.22,1,.36,1), border-color .25s ease;
+  }
+  .model5-card-hover:hover {
+    transform: translateY(-5px) scale(1.006);
+    box-shadow: 0 34px 100px rgba(14,165,233,.16);
+    border-color: rgba(125,211,252,.55);
+  }
+
+  .model5-pill-blue {
+    background: rgba(14,165,233,.14);
+    color: rgb(12,74,110);
+    border: 1px solid rgba(14,165,233,.22);
+  }
+  .dark .model5-pill-blue { color: rgb(186,230,253); background: rgba(14,165,233,.14); }
+
+  .model5-sidebar { background: rgba(2,6,23,.94); backdrop-filter: blur(28px) saturate(160%); }
+
+  .model5-progress-track { background: rgba(148,163,184,.22); }
+  .model5-progress-fill { background: linear-gradient(90deg, #38bdf8, #818cf8, #f0abfc); }
+}
+
+
+/* Correções de fluidez e visibilidade — versão ajustada */
+@layer components {
+  .model5-panel,
+  .model5-stat,
+  .model5-chip,
+  .agile-glass-card {
+    backdrop-filter: blur(14px) saturate(135%) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(135%) !important;
+  }
+
+  .model5-panel {
+    box-shadow: 0 18px 55px rgba(15, 23, 42, 0.10) !important;
+  }
+
+  .dark .model5-panel {
+    box-shadow: 0 18px 55px rgba(0, 0, 0, 0.30) !important;
+  }
+
+  .model5-card-hover {
+    transform: translateZ(0);
+  }
+
+  .model5-card-hover:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 20px 55px rgba(14,165,233,.12) !important;
+  }
+
+  .model5-hero {
+    box-shadow: 0 22px 60px rgba(8,47,73,.20) !important;
+  }
+
+  button, a {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@media (max-width: 1024px), (prefers-reduced-motion: reduce) {
+  .model5-panel,
+  .model5-stat,
+  .model5-chip,
+  .agile-glass-card {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .model5-card-hover:hover {
+    transform: none !important;
+  }
+}
+
+
+/* Fixes for Modelo 5 visual consistency */
+@layer components {
+  .agile-ai-panel {
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(2, 6, 23, 0.86)) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 22px 70px rgba(0, 0, 0, 0.32) !important;
+  }
+
+  .agile-premium-shell .agile-action-button,
+  .agile-premium-shell button[aria-label="Criar nova tarefa"] {
+    color: #ffffff !important;
+    text-shadow: 0 1px 8px rgba(2, 6, 23, 0.35);
+  }
+
+  .agile-premium-shell .agile-action-button svg,
+  .agile-premium-shell button[aria-label="Criar nova tarefa"] svg {
+    color: #ffffff !important;
+  }
+
+  .agile-premium-shell .model5-sidebar {
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), color-mix(in srgb, var(--agile-accent-800, #1e40af) 18%, rgba(2, 6, 23, 0.96))) !important;
+  }
+}
+
+/* AgileTask performance patch — reduz travamentos sem mudar o layout */
+@layer components {
+  .agile-premium-shell * {
+    transition-duration: 80ms !important;
+    animation-duration: 80ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .agile-premium-shell,
+  .model5-shell {
+    will-change: auto !important;
+  }
+
+  /* Backdrop-filter e blur em excesso deixam o navegador pesado, principalmente no Chrome/Linux. */
+  .agile-premium-shell .bg-white,
+  .agile-premium-shell .bg-slate-50,
+  .agile-premium-shell .bg-slate-50\/50,
+  .dark .agile-premium-shell .bg-white,
+  .dark .agile-premium-shell .bg-slate-50,
+  .dark .agile-premium-shell .dark\:bg-slate-900,
+  .dark .agile-premium-shell .dark\:bg-slate-950,
+  .dark .agile-premium-shell .dark\:bg-slate-800,
+  .model5-panel,
+  .model5-stat,
+  .model5-chip,
+  .agile-glass-card,
+  .model5-sidebar,
+  .agile-ai-panel,
+  .backdrop-blur-xl,
+  .backdrop-blur-2xl,
+  .backdrop-blur-3xl,
+  .backdrop-blur,
+  .backdrop-blur-sm,
+  .backdrop-blur-md,
+  .backdrop-blur-lg {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Remove halos decorativos gigantes que ficavam fixos na tela e causavam repaint constante. */
+  .agile-premium-shell > .pointer-events-none.fixed.inset-0 {
+    opacity: 0.34 !important;
+  }
+
+  .agile-premium-shell .blur-3xl,
+  .agile-premium-shell .blur-2xl,
+  .agile-premium-shell .blur-xl {
+    filter: none !important;
+    opacity: 0.18 !important;
+  }
+
+  .model5-mountain {
+    filter: none !important;
+  }
+
+  .model5-panel,
+  .model5-stat,
+  .agile-glass-card,
+  .model5-hero {
+    box-shadow: 0 14px 34px rgba(2, 6, 23, 0.16) !important;
+  }
+
+  .model5-card-hover,
+  .agile-task-lift {
+    transform: none !important;
+  }
+
+  .model5-card-hover:hover,
+  .agile-task-lift:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 16px 38px rgba(14, 165, 233, 0.10) !important;
+  }
+
+  .agile-premium-shell button:hover,
+  .agile-premium-shell a:hover {
+    transform: none !important;
+  }
+
+  .agile-premium-shell button:active,
+  .agile-premium-shell a:active {
+    transform: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agile-premium-shell *,
+  .agile-premium-shell *::before,
+  .agile-premium-shell *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Correção global de contraste + badges de prioridade + botões de ação */
+@layer components {
+  .agile-priority-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 1.65rem !important;
+    border-radius: 999px !important;
+    padding: 0.28rem 0.72rem !important;
+    font-size: 0.72rem !important;
+    font-weight: 900 !important;
+    letter-spacing: 0.01em !important;
+    line-height: 1 !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    box-shadow: 0 8px 22px rgba(2, 6, 23, 0.20) !important;
+    text-decoration: none !important;
+    opacity: 1 !important;
+  }
+
+  .agile-priority-alta {
+    background: linear-gradient(135deg, #fb7185, #f97316) !important;
+    color: #ffffff !important;
+    border-color: rgba(251, 113, 133, 0.45) !important;
+    text-shadow: 0 1px 8px rgba(88, 28, 28, 0.35) !important;
+  }
+
+  .agile-priority-media {
+    background: linear-gradient(135deg, #facc15, #f59e0b) !important;
+    color: #1f1300 !important;
+    border-color: rgba(250, 204, 21, 0.55) !important;
+    text-shadow: none !important;
+  }
+
+  .agile-priority-baixa {
+    background: linear-gradient(135deg, #34d399, #14b8a6) !important;
+    color: #022c22 !important;
+    border-color: rgba(52, 211, 153, 0.55) !important;
+    text-shadow: none !important;
+  }
+
+  .dark .agile-priority-media,
+  .dark .agile-priority-baixa {
+    color: #02111a !important;
+  }
+
+  .agile-action-button,
+  .agile-action-button *,
+  .agile-solid-button,
+  .agile-solid-button * {
+    color: #ffffff !important;
+    opacity: 1 !important;
+    text-shadow: 0 1px 10px rgba(2, 6, 23, 0.42) !important;
+  }
+
+  .agile-action-button {
+    background: linear-gradient(135deg, var(--agile-accent-400, #22d3ee), var(--agile-accent-700, #2563eb)) !important;
+    border: 1px solid color-mix(in srgb, var(--agile-accent-400, #22d3ee) 52%, white 10%) !important;
+    box-shadow: 0 14px 34px color-mix(in srgb, var(--agile-accent-500, #3b82f6) 26%, transparent) !important;
+  }
+
+  .agile-action-button:disabled {
+    color: rgba(255, 255, 255, 0.58) !important;
+    filter: saturate(0.72) brightness(0.85) !important;
+  }
+
+  .agile-premium-shell button.bg-gradient-to-r:not(.agile-priority-badge),
+  .agile-premium-shell a.bg-gradient-to-r:not(.agile-priority-badge) {
+    color: #ffffff !important;
+  }
+
+  .agile-premium-shell button.bg-gradient-to-r:not(.agile-priority-badge) svg,
+  .agile-premium-shell a.bg-gradient-to-r:not(.agile-priority-badge) svg {
+    color: #ffffff !important;
+  }
+
+  .dark .agile-premium-shell label,
+  .dark .agile-premium-shell .modal-label,
+  .dark .agile-premium-shell .settings-label {
+    color: #e2e8f0 !important;
+  }
+
+  .dark .agile-premium-shell select option {
+    background: #0f172a !important;
+    color: #f8fafc !important;
+  }
+
+  .dark .agile-premium-shell .model5-panel h1,
+  .dark .agile-premium-shell .model5-panel h2,
+  .dark .agile-premium-shell .model5-panel h3,
+  .dark .agile-premium-shell .model5-panel h4 {
+    color: #f8fafc !important;
+  }
+
+  .dark .agile-premium-shell .model5-panel p,
+  .dark .agile-premium-shell .model5-panel span:not(.agile-priority-badge) {
+    color: inherit;
+  }
+
+  .agile-kanban-drop-active {
+    outline: 2px dashed var(--agile-accent-400, #38bdf8) !important;
+    outline-offset: 6px !important;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--agile-accent-600, #2563eb) 18%, rgba(15, 35, 63, 0.74)), rgba(4, 10, 25, 0.78)) !important;
+  }
+
+  .agile-kanban-drop-active::after {
+    content: "Solte aqui para mover";
+    display: block;
+    margin: 0.8rem 0 0;
+    border-radius: 1.2rem;
+    border: 1px dashed color-mix(in srgb, var(--agile-accent-400, #38bdf8) 65%, transparent);
+    padding: 0.8rem;
+    text-align: center;
+    color: #dff7ff;
+    font-size: 0.82rem;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    background: rgba(14, 165, 233, 0.08);
+  }
+}
+
+
+/* Correção definitiva de contraste para alternância entre tema claro e escuro.
+   Mantém o layout Modelo 5, mas impede que textos escuros sumam em áreas roxas/escuras
+   e que textos claros sumam em cards brancos. */
+@layer components {
+  html:not(.dark) .agile-premium-shell .model5-hero,
+  html:not(.dark) .agile-premium-shell .model5-hero h1,
+  html:not(.dark) .agile-premium-shell .model5-hero h2,
+  html:not(.dark) .agile-premium-shell .model5-hero h3,
+  html:not(.dark) .agile-premium-shell .model5-hero p,
+  html:not(.dark) .agile-premium-shell .model5-hero span:not(.agile-priority-badge),
+  html:not(.dark) .agile-premium-shell .model5-hero div:not(.agile-priority-badge),
+  html:not(.dark) .agile-premium-shell .model5-hero a,
+  html:not(.dark) .agile-premium-shell .model5-hero button:not(.agile-action-button) {
+    color: #f8fafc !important;
+  }
+
+  html:not(.dark) .agile-premium-shell .model5-hero p,
+  html:not(.dark) .agile-premium-shell .model5-hero .text-sky-50\/85,
+  html:not(.dark) .agile-premium-shell .model5-hero .text-cyan-100\/70,
+  html:not(.dark) .agile-premium-shell .model5-hero .text-cyan-100 {
+    color: #dff7ff !important;
+  }
+
+  html:not(.dark) .agile-premium-shell .model5-hero .model5-chip {
+    border-color: rgba(255, 255, 255, 0.22) !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+  }
+
+  html:not(.dark) .agile-premium-shell .model5-sidebar {
+    color: #eaf6ff !important;
+  }
+
+  html:not(.dark) .agile-premium-shell .model5-sidebar h1,
+  html:not(.dark) .agile-premium-shell .model5-sidebar h2,
+  html:not(.dark) .agile-premium-shell .model5-sidebar h3,
+  html:not(.dark) .agile-premium-shell .model5-sidebar .text-2xl,
+  html:not(.dark) .agile-premium-shell .model5-sidebar .font-black {
+    color: #ffffff !important;
+  }
+
+  html:not(.dark) .agile-premium-shell .model5-sidebar p,
+  html:not(.dark) .agile-premium-shell .model5-sidebar .text-slate-300,
+  html:not(.dark) .agile-premium-shell .model5-sidebar .text-cyan-100\/60,
+  html:not(.dark) .agile-premium-shell .model5-sidebar .text-cyan-100\/65,
+  html:not(.dark) .agile-premium-shell .model5-sidebar .text-cyan-100\/70 {
+    color: #cbd5e1 !important;
+  }
+
+  html:not(.dark) .agile-premium-shell .model5-sidebar a,
+  html:not(.dark) .agile-premium-shell .model5-sidebar button {
+    color: #dbeafe !important;
+  }
+
+  html:not(.dark) .agile-premium-shell .model5-sidebar a[aria-current="page"],
+  html:not(.dark) .agile-premium-shell .model5-sidebar .router-link-active {
+    color: #ffffff !important;
+  }
+
+  html:not(.dark) .agile-premium-shell .model5-panel,
+  html:not(.dark) .agile-premium-shell .model5-stat,
+  html:not(.dark) .agile-premium-shell .agile-glass-card {
+    color: #0f172a !important;
+  }
+
+  html:not(.dark) .agile-premium-shell .model5-panel h1,
+  html:not(.dark) .agile-premium-shell .model5-panel h2,
+  html:not(.dark) .agile-premium-shell .model5-panel h3,
+  html:not(.dark) .agile-premium-shell .model5-panel h4,
+  html:not(.dark) .agile-premium-shell .model5-stat h1,
+  html:not(.dark) .agile-premium-shell .model5-stat h2,
+  html:not(.dark) .agile-premium-shell .model5-stat h3,
+  html:not(.dark) .agile-premium-shell .model5-stat h4 {
+    color: #0f172a !important;
+  }
+
+  html:not(.dark) .agile-premium-shell .model5-panel p,
+  html:not(.dark) .agile-premium-shell .model5-panel .text-slate-500,
+  html:not(.dark) .agile-premium-shell .model5-panel .text-slate-400,
+  html:not(.dark) .agile-premium-shell .model5-stat .text-slate-500,
+  html:not(.dark) .agile-premium-shell .model5-stat .text-slate-400 {
+    color: #475569 !important;
+  }
+
+  html:not(.dark) .agile-premium-shell .agile-ai-panel,
+  html:not(.dark) .agile-premium-shell .agile-ai-panel h1,
+  html:not(.dark) .agile-premium-shell .agile-ai-panel h2,
+  html:not(.dark) .agile-premium-shell .agile-ai-panel h3,
+  html:not(.dark) .agile-premium-shell .agile-ai-panel p,
+  html:not(.dark) .agile-premium-shell .agile-ai-panel span,
+  html:not(.dark) .agile-premium-shell .agile-ai-panel div {
+    color: #f8fafc !important;
+  }
+
+  html:not(.dark) .agile-premium-shell .agile-ai-panel input,
+  html:not(.dark) .agile-premium-shell .agile-ai-panel textarea {
+    background: rgba(15, 23, 42, 0.72) !important;
+    color: #f8fafc !important;
+    border-color: rgba(255, 255, 255, 0.16) !important;
+  }
+
+  html:not(.dark) .agile-premium-shell .agile-ai-panel input::placeholder,
+  html:not(.dark) .agile-premium-shell .agile-ai-panel textarea::placeholder {
+    color: #94a3b8 !important;
+  }
+
+  html:not(.dark) .agile-premium-shell .agile-action-button,
+  html:not(.dark) .agile-premium-shell .agile-action-button *,
+  html:not(.dark) .agile-premium-shell button[aria-label="Criar nova tarefa"],
+  html:not(.dark) .agile-premium-shell button[aria-label="Criar nova tarefa"] * {
+    color: #ffffff !important;
+  }
+}
