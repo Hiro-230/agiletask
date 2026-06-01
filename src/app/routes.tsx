@@ -7,6 +7,7 @@ import { Kanban } from "./pages/Kanban";
 import { AIAssistant } from "./pages/AIAssistant";
 import { Tasks } from "./pages/Tasks";
 import { TaskDetail } from "./pages/TaskDetail";
+import { TaskOverview } from "./pages/TaskOverview";
 import { Settings } from "./pages/Settings";
 
 // Simple route guard - check if user exists in localStorage
@@ -35,6 +36,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: Dashboard },
       { path: "tarefas", Component: Tasks },
+      { path: "tarefas/visao/:type", Component: TaskOverview },
       { path: "tarefas/:taskId", Component: TaskDetail },
       { path: "kanban", Component: Kanban },
       { path: "ai-assistant", Component: AIAssistant },

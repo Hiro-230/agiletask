@@ -17,7 +17,7 @@ import {
 import { motion } from "motion/react";
 import { toast } from "sonner";
 import { useTasks } from "../context/TaskContext";
-import { useAppearance } from "../context/AppearanceContext";
+import { CustomColorPalette, useAppearance } from "../context/AppearanceContext";
 
 type SettingsTab = "perfil" | "notificacoes" | "ia" | "aparencia" | "dados";
 
@@ -29,6 +29,33 @@ const API_ONLY_DEEPSEEK_MODELS = new Set([
   "deepseek-coder",
   "deepseek-v3",
 ]);
+
+const SAFE_CUSTOM_COLOR_FALLBACK: CustomColorPalette = {
+  primary: "#7c3aed",
+  secondary: "#06b6d4",
+  background: "#020617",
+  surface: "#0f172a",
+};
+
+function isValidHexColor(value: string) {
+  return /^#[0-9a-fA-F]{6}$/.test(value.trim());
+}
+
+function safeHexColor(value: string, fallback: string) {
+  const clean = value.trim();
+  return isValidHexColor(clean) ? clean : fallback;
+}
+
+function readableTextColor(background: string) {
+  const hex = safeHexColor(background, "#0f172a").slice(1);
+  const r = parseInt(hex.slice(0, 2), 16) / 255;
+  const g = parseInt(hex.slice(2, 4), 16) / 255;
+  const b = parseInt(hex.slice(4, 6), 16) / 255;
+  const convert = (v: number) => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  const lum = 0.2126 * convert(r) + 0.7152 * convert(g) + 0.0722 * convert(b);
+  return lum > 0.48 ? "#0f172a" : "#ffffff";
+}
+
 
 function normalizeOllamaModel(value?: string | null): string {
   const model = (value || "").trim();
@@ -52,7 +79,7 @@ function normalizeOllamaUrl(value?: string | null): string {
 
 export function Settings() {
   const { tasks } = useTasks();
-  const { updateAppearance } = useAppearance();
+  const { updateAppearance, customColors: savedCustomColors, resetCustomColors } = useAppearance();
   const [activeTab, setActiveTab] = useState<SettingsTab>("perfil");
   const [saved, setSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -107,6 +134,7 @@ export function Settings() {
   const [accentColor, setAccentColor] = useState(
     () => localStorage.getItem("@AgileTask:accent") || "blue",
   );
+  const [customColors, setCustomColors] = useState<CustomColorPalette>(() => savedCustomColors);
   const [fontSize, setFontSize] = useState(
     () => localStorage.getItem("@AgileTask:fontSize") || "medium",
   );
@@ -164,17 +192,44 @@ export function Settings() {
 
   const handleThemeChange = (newTheme: string) => {
     setTheme(newTheme);
-    updateAppearance(newTheme, accentColor, fontSize);
+    updateAppearance(newTheme, accentColor, fontSize, customColors);
   };
 
   const handleAccentChange = (newAccent: string) => {
     setAccentColor(newAccent);
-    updateAppearance(theme, newAccent, fontSize);
+    updateAppearance(theme, newAccent, fontSize, customColors);
+  };
+
+  const handleCustomColorChange = (key: keyof CustomColorPalette, value: string) => {
+    const updated = { ...customColors, [key]: value };
+    setCustomColors(updated);
+
+    // Só aplica a paleta ao site quando a cor é válida.
+    // Isso evita quebrar o tema enquanto o usuário digita manualmente o HEX.
+    if (isValidHexColor(value)) {
+      const safeUpdated: CustomColorPalette = {
+        primary: safeHexColor(updated.primary, SAFE_CUSTOM_COLOR_FALLBACK.primary),
+        secondary: safeHexColor(updated.secondary, SAFE_CUSTOM_COLOR_FALLBACK.secondary),
+        background: safeHexColor(updated.background, SAFE_CUSTOM_COLOR_FALLBACK.background),
+        surface: safeHexColor(updated.surface, SAFE_CUSTOM_COLOR_FALLBACK.surface),
+      };
+      setAccentColor("custom");
+      updateAppearance(theme, "custom", fontSize, safeUpdated);
+    }
+  };
+
+  const handleResetCustomColors = () => {
+    const fallback: CustomColorPalette = SAFE_CUSTOM_COLOR_FALLBACK;
+    setCustomColors(fallback);
+    setAccentColor("blue");
+    resetCustomColors();
+    updateAppearance(theme, "blue", fontSize, fallback);
+    toast.success("Cores restauradas para o padrão seguro.");
   };
 
   const handleFontSizeChange = (newSize: string) => {
     setFontSize(newSize);
-    updateAppearance(theme, accentColor, newSize);
+    updateAppearance(theme, accentColor, newSize, customColors);
   };
 
   const handleSave = () => {
@@ -227,7 +282,7 @@ export function Settings() {
     localStorage.setItem("@AgileTask:fontSize", fontSize);
 
     // Update appearance in real-time
-    updateAppearance(theme, accentColor, fontSize);
+    updateAppearance(theme, accentColor, fontSize, customColors);
 
     setSaved(true);
     toast.success("Configurações salvas com sucesso!");
@@ -281,12 +336,20 @@ export function Settings() {
     { id: "dados" as SettingsTab, label: "Dados", icon: Database },
   ];
 
+  const safeCustomColors: CustomColorPalette = {
+    primary: safeHexColor(customColors.primary, SAFE_CUSTOM_COLOR_FALLBACK.primary),
+    secondary: safeHexColor(customColors.secondary, SAFE_CUSTOM_COLOR_FALLBACK.secondary),
+    background: safeHexColor(customColors.background, SAFE_CUSTOM_COLOR_FALLBACK.background),
+    surface: safeHexColor(customColors.surface, SAFE_CUSTOM_COLOR_FALLBACK.surface),
+  };
+
   const accentColors = [
     { name: "blue", label: "Azul", hex: "#2563eb" },
     { name: "indigo", label: "Índigo", hex: "#4f46e5" },
     { name: "violet", label: "Violeta", hex: "#7c3aed" },
     { name: "emerald", label: "Verde", hex: "#059669" },
     { name: "amber", label: "Âmbar", hex: "#d97706" },
+    { name: "custom", label: "Personalizada", hex: safeCustomColors.primary },
   ];
 
   return (
@@ -672,6 +735,81 @@ export function Settings() {
                     ))}
                   </div>
                 </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-900/60">
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div>
+                      <label className="text-sm font-semibold text-slate-800 dark:text-slate-100 block">
+                        Editor livre de cores
+                      </label>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        Personalize as cores principais sem quebrar contraste. O sistema ajusta textos automaticamente.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleResetCustomColors}
+                      className="shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-white transition-colors dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                      Restaurar
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                      { key: "primary" as const, label: "Cor principal", hint: "Botões, links e destaques" },
+                      { key: "secondary" as const, label: "Cor secundária", hint: "Gradientes e detalhes" },
+                      { key: "background" as const, label: "Fundo do site", hint: "Base visual do sistema" },
+                      { key: "surface" as const, label: "Cards e painéis", hint: "Superfícies internas" },
+                    ].map((item) => (
+                      <div key={item.key} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-950/50">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{item.label}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">{item.hint}</p>
+                          </div>
+                          <input
+                            type="color"
+                            value={safeCustomColors[item.key]}
+                            onChange={(e) => handleCustomColorChange(item.key, e.target.value)}
+                            className="h-10 w-12 cursor-pointer rounded-lg border border-slate-200 bg-transparent p-1 dark:border-slate-700"
+                          />
+                        </div>
+                        <input
+                          value={customColors[item.key]}
+                          onChange={(e) => handleCustomColorChange(item.key, e.target.value)}
+                          onBlur={(e) => {
+                            if (!/^#[0-9a-fA-F]{6}$/.test(e.target.value.trim())) {
+                              toast.error("Use cores no formato hexadecimal, exemplo: #7c3aed");
+                            }
+                          }}
+                          placeholder="#7c3aed"
+                          className="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-mono text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <div
+                      className="p-4"
+                      style={{
+                        background: `linear-gradient(135deg, ${safeCustomColors.primary}, ${safeCustomColors.secondary})`,
+                        color: "#ffffff",
+                      }}
+                    >
+                      <p className="text-sm font-bold">Prévia segura do tema</p>
+                      <p className="text-xs opacity-90">Botões e banners usam contraste fixo para não sumir.</p>
+                    </div>
+                    <div
+                      className="p-4"
+                      style={{ backgroundColor: safeCustomColors.surface }}
+                    >
+                      <p className="text-sm font-semibold" style={{ color: readableTextColor(safeCustomColors.surface) }}>Cards e painéis recebem a cor escolhida.</p>
+                      <p className="text-xs" style={{ color: readableTextColor(safeCustomColors.surface), opacity: 0.72 }}>Ao salvar, a escolha fica guardada no navegador.</p>
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <label className="text-sm font-medium text-slate-700 block mb-3">
                     Tamanho da Fonte

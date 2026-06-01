@@ -68,10 +68,10 @@ export function Dashboard() {
   ];
 
   const stats = [
-    { label: "Tarefas ativas", value: activeTasks.length, delta: "+ foco hoje", icon: Target, tone: "text-white" },
-    { label: "Concluídas", value: completed, delta: `${productivity}% do total`, icon: CheckCircle2, tone: "text-emerald-500" },
-    { label: "Em andamento", value: inProgress, delta: "fluxo atual", icon: Zap, tone: "text-violet-500" },
-    { label: "Atrasadas", value: overdue, delta: overdue ? "precisa atenção" : "tudo certo", icon: Flame, tone: overdue ? "text-rose-500" : "text-cyan-500" },
+    { label: "Tarefas ativas", value: activeTasks.length, delta: "+ foco hoje", icon: Target, tone: "text-cyan-500", route: "/tarefas/visao/active", hint: "Ver pendentes e em andamento" },
+    { label: "Concluídas", value: completed, delta: `${productivity}% do total`, icon: CheckCircle2, tone: "text-emerald-500", route: "/tarefas/visao/done", hint: "Ver entregas finalizadas" },
+    { label: "Em andamento", value: inProgress, delta: "fluxo atual", icon: Zap, tone: "text-violet-500", route: "/tarefas/visao/inProgress", hint: "Ver execução ativa" },
+    { label: "Atrasadas", value: overdue, delta: overdue ? "precisa atenção" : "tudo certo", icon: Flame, tone: overdue ? "text-rose-500" : "text-cyan-500", route: "/tarefas/visao/overdue", hint: "Ver tarefas vencidas" },
   ];
 
   return (
@@ -104,20 +104,31 @@ export function Dashboard() {
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
-            <motion.div key={stat.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }} className="model5-stat model5-card-hover rounded-[28px] p-5">
+            <motion.button
+              key={stat.label}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              whileHover={{ y: -4 }}
+              transition={{ delay: index * 0.04 }}
+              onClick={() => navigate(stat.route)}
+              className="model5-stat model5-card-hover group rounded-[28px] p-5 text-left transition-all focus:outline-none focus:ring-2 focus:ring-cyan-300/70"
+              aria-label={`Abrir visão: ${stat.label}`}
+            >
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-bold text-slate-500 dark:text-slate-300">{stat.label}</p>
                   <p className="mt-2 text-3xl font-black text-slate-950 dark:text-white">{stat.value}</p>
                 </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/70 ring-1 ring-slate-200/60 dark:bg-white/10 dark:ring-white/10">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/70 ring-1 ring-slate-200/60 transition group-hover:scale-105 dark:bg-white/10 dark:ring-white/10">
                   <Icon className={`h-6 w-6 ${stat.tone}`} />
                 </div>
               </div>
-              <div className="mt-4 flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-300">
-                <TrendingUp className="h-3.5 w-3.5 text-emerald-400" /> {stat.delta}
+              <div className="mt-4 flex items-center justify-between gap-3 text-xs font-bold text-slate-500 dark:text-slate-300">
+                <span className="inline-flex items-center gap-2"><TrendingUp className="h-3.5 w-3.5 text-emerald-400" /> {stat.delta}</span>
+                <span className="inline-flex items-center gap-1 text-cyan-700 opacity-0 transition group-hover:opacity-100 dark:text-cyan-200">Abrir <ArrowUpRight className="h-3.5 w-3.5" /></span>
               </div>
-            </motion.div>
+              <p className="mt-2 text-xs font-semibold text-slate-400 dark:text-slate-400">{stat.hint}</p>
+            </motion.button>
           );
         })}
       </div>
