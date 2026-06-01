@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   User,
   Bell,
@@ -15,6 +15,7 @@ import {
   Camera,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { useTasks } from "../context/TaskContext";
 import { CustomColorPalette, useAppearance } from "../context/AppearanceContext";
@@ -36,6 +37,23 @@ const SAFE_CUSTOM_COLOR_FALLBACK: CustomColorPalette = {
   background: "#020617",
   surface: "#0f172a",
 };
+
+type ProfileStatus = "online" | "focus" | "busy" | "offline";
+
+const profileStatusOptions: Array<{ id: ProfileStatus; label: string; description: string; color: string }> = [
+  { id: "online", label: "Online agora", description: "Disponível para executar tarefas", color: "bg-emerald-400" },
+  { id: "focus", label: "Em foco", description: "Concentrado em uma prioridade", color: "bg-cyan-400" },
+  { id: "busy", label: "Ocupado", description: "Evitar interrupções", color: "bg-amber-400" },
+  { id: "offline", label: "Offline", description: "Aparecer como indisponível", color: "bg-slate-400" },
+];
+
+function normalizeProfileStatus(value: string | null): ProfileStatus {
+  return value === "focus" || value === "busy" || value === "offline" || value === "online" ? value : "online";
+}
+
+function normalizeSettingsTab(value: string | null): SettingsTab {
+  return value === "perfil" || value === "notificacoes" || value === "ia" || value === "aparencia" || value === "dados" ? value : "perfil";
+}
 
 function isValidHexColor(value: string) {
   return /^#[0-9a-fA-F]{6}$/.test(value.trim());
@@ -80,7 +98,8 @@ function normalizeOllamaUrl(value?: string | null): string {
 export function Settings() {
   const { tasks } = useTasks();
   const { updateAppearance, customColors: savedCustomColors, resetCustomColors } = useAppearance();
-  const [activeTab, setActiveTab] = useState<SettingsTab>("perfil");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => normalizeSettingsTab(searchParams.get("tab")));
   const [saved, setSaved] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -102,6 +121,9 @@ export function Settings() {
   );
   const [role, setRole] = useState(
     () => localStorage.getItem("@AgileTask:role") || "Designer de Produto",
+  );
+  const [profileStatus, setProfileStatus] = useState<ProfileStatus>(
+    () => normalizeProfileStatus(localStorage.getItem("@AgileTask:profileStatus")),
   );
   const [newPassword, setNewPassword] = useState("");
 
@@ -138,6 +160,23 @@ export function Settings() {
   const [fontSize, setFontSize] = useState(
     () => localStorage.getItem("@AgileTask:fontSize") || "medium",
   );
+
+  useEffect(() => {
+    const tabFromUrl = normalizeSettingsTab(searchParams.get("tab"));
+    setActiveTab(tabFromUrl);
+  }, [searchParams]);
+
+  const handleTabChange = (tab: SettingsTab) => {
+    setActiveTab(tab);
+    setSearchParams({ tab });
+  };
+
+  const handleProfileStatusChange = (status: ProfileStatus) => {
+    setProfileStatus(status);
+    localStorage.setItem("@AgileTask:profileStatus", status);
+    window.dispatchEvent(new Event("agiletask-profile-updated"));
+    toast.success(`Status atualizado para ${profileStatusOptions.find((item) => item.id === status)?.label}.`);
+  };
 
   const handlePhotoClick = () => {
     fileInputRef.current?.click();
@@ -237,6 +276,7 @@ export function Settings() {
     localStorage.setItem("@AgileTask:name", name);
     localStorage.setItem("@AgileTask:email", email);
     localStorage.setItem("@AgileTask:role", role);
+    localStorage.setItem("@AgileTask:profileStatus", profileStatus);
     localStorage.setItem("@AgileTask:profilePhoto", profilePhoto);
     localStorage.setItem(
       "@AgileTask:twoFactorEnabled",
@@ -247,7 +287,7 @@ export function Settings() {
     }
     localStorage.setItem(
       "@AgileTask:currentUser",
-      JSON.stringify({ name, email, role }),
+      JSON.stringify({ name, email, role, status: profileStatus }),
     );
     window.dispatchEvent(new Event("agiletask-profile-updated"));
 
@@ -293,7 +333,7 @@ export function Settings() {
     const data = {
       tasks,
       exportedAt: new Date().toISOString(),
-      user: { name, email, role },
+      user: { name, email, role, status: profileStatus },
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], {
       type: "application/json",
@@ -386,7 +426,7 @@ export function Settings() {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all w-full text-left
                   ${
                     activeTab === tab.id
@@ -478,6 +518,33 @@ export function Settings() {
                     onChange={(e) => setRole(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                   />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="text-sm font-medium text-slate-700">
+                    Status exibido na barra lateral
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {profileStatusOptions.map((status) => {
+                      const active = profileStatus === status.id;
+                      return (
+                        <button
+                          key={status.id}
+                          type="button"
+                          onClick={() => handleProfileStatusChange(status.id)}
+                          className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${active ? "border-cyan-400 bg-cyan-50 text-slate-900 shadow-sm dark:border-cyan-300/60 dark:bg-cyan-400/10 dark:text-white" : "border-slate-200 bg-slate-50 text-slate-700 hover:border-cyan-200 hover:bg-white dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-200"}`}
+                        >
+                          <span className={`h-3 w-3 rounded-full ${status.color}`} />
+                          <span className="min-w-0">
+                            <span className="block text-sm font-bold">{status.label}</span>
+                            <span className="block text-xs opacity-70">{status.description}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Ao escolher um status, a barra da sidebar atualiza na hora e vira atalho para esta página.
+                  </p>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-sm font-medium text-slate-700">

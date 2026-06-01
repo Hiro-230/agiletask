@@ -1100,11 +1100,69 @@ function saveStoredMessages(messages: Message[]) {
   }
 }
 
+// Estado global do Roby: mantém a requisição e o histórico vivos mesmo
+// quando o usuário sai da página do Assistente de IA.
+let robyGlobalMessages: Message[] | null = null;
+let robyGlobalIsLoading = false;
+let robyRequestVersion = 0;
+const robyListeners = new Set<() => void>();
+
+function getRobyGlobalMessages(): Message[] {
+  if (!robyGlobalMessages) {
+    robyGlobalMessages = loadStoredMessages();
+  }
+  return robyGlobalMessages;
+}
+
+function notifyRobyListeners() {
+  robyListeners.forEach((listener) => listener());
+}
+
+function setRobyGlobalMessages(updater: Message[] | ((previous: Message[]) => Message[])) {
+  const previous = getRobyGlobalMessages();
+  const next = typeof updater === "function" ? (updater as (previous: Message[]) => Message[])(previous) : updater;
+  robyGlobalMessages = next.slice(-MAX_STORED_MESSAGES);
+  saveStoredMessages(robyGlobalMessages);
+  notifyRobyListeners();
+}
+
+function appendRobyMessage(message: Message) {
+  setRobyGlobalMessages((previous) => [...previous, message]);
+}
+
+function setRobyGlobalLoading(value: boolean) {
+  robyGlobalIsLoading = value;
+  notifyRobyListeners();
+}
+
+function useRobyGlobalChatState() {
+  const [snapshot, setSnapshot] = useState(() => ({
+    messages: getRobyGlobalMessages(),
+    isLoading: robyGlobalIsLoading,
+  }));
+
+  useEffect(() => {
+    const listener = () => {
+      setSnapshot({
+        messages: getRobyGlobalMessages(),
+        isLoading: robyGlobalIsLoading,
+      });
+    };
+
+    robyListeners.add(listener);
+    listener();
+    return () => {
+      robyListeners.delete(listener);
+    };
+  }, []);
+
+  return snapshot;
+}
+
 export function AIAssistant() {
   const { tasks, addTask, updateTask, updateTaskStatus, deleteTask } = useTasks();
-  const [messages, setMessages] = useState<Message[]>(loadStoredMessages);
+  const { messages, isLoading } = useRobyGlobalChatState();
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [isRestarting, setIsRestarting] = useState(false);
   const [ollamaUrl, setOllamaUrl] = useState(
     () => normalizeOllamaUrl(localStorage.getItem("@AgileTask:ollamaUrl")),
@@ -1135,10 +1193,6 @@ export function AIAssistant() {
   }, []);
 
   useEffect(() => {
-    saveStoredMessages(messages);
-  }, [messages]);
-
-  useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
@@ -1147,7 +1201,10 @@ export function AIAssistant() {
   const handleSend = async (e: React.FormEvent | null, quickMsg?: string) => {
     if (e) e.preventDefault();
     const text = quickMsg || input;
-    if (!text.trim() || isLoading) return;
+    if (!text.trim() || robyGlobalIsLoading) return;
+
+    const requestVersion = ++robyRequestVersion;
+    const historyBeforeSend = getRobyGlobalMessages().slice(-8);
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -1156,9 +1213,9 @@ export function AIAssistant() {
       time: format(new Date(), "HH:mm"),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    appendRobyMessage(userMessage);
     setInput("");
-    setIsLoading(true);
+    setRobyGlobalLoading(true);
 
     try {
       let responseText: string;
@@ -1180,7 +1237,7 @@ export function AIAssistant() {
           // Modo direto: tudo que não é ação vai diretamente para o DeepSeek local.
           responseText = await callOllama(
             text,
-            messages.slice(-6),
+            historyBeforeSend,
             tasks,
             ollamaUrl,
             aiModel,
@@ -1190,41 +1247,41 @@ export function AIAssistant() {
         }
       }
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          type: "ai",
-          content: responseText,
-          time: format(new Date(), "HH:mm"),
-        },
-      ]);
+      if (robyRequestVersion !== requestVersion) return;
+
+      appendRobyMessage({
+        id: (Date.now() + 1).toString(),
+        type: "ai",
+        content: responseText,
+        time: format(new Date(), "HH:mm"),
+      });
     } catch (err) {
+      if (robyRequestVersion !== requestVersion) return;
+
       const errorDetail = parseOllamaError(err);
-      await new Promise((r) => setTimeout(r, 300));
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          type: "ai",
-          content: `⚠️ Não consegui responder pelo DeepSeek local agora.
+      appendRobyMessage({
+        id: (Date.now() + 1).toString(),
+        type: "ai",
+        content: `⚠️ Não consegui responder pelo DeepSeek local agora.
 
 Detalhe: ${errorDetail}.
 
 Verifique se o Ollama está rodando e se o modelo aparece em "ollama list". Se você tiver baixado outro modelo, eu tento detectar automaticamente o modelo DeepSeek instalado.`,
-          time: format(new Date(), "HH:mm"),
-        },
-      ]);
+        time: format(new Date(), "HH:mm"),
+      });
     } finally {
-      setIsLoading(false);
+      if (robyRequestVersion === requestVersion) {
+        setRobyGlobalLoading(false);
+      }
     }
   };
 
   const clearChat = () => {
+    robyRequestVersion += 1;
+    setRobyGlobalLoading(false);
     setIsRestarting(true);
     const freshMessages = createInitialMessages();
-    setMessages(freshMessages);
-    saveStoredMessages(freshMessages);
+    setRobyGlobalMessages(freshMessages);
     setTimeout(() => setIsRestarting(false), 700);
   };
 

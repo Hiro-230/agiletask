@@ -11,6 +11,7 @@ import {
   Sparkles,
   ChevronRight,
   Gauge,
+  UserCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useAuth } from "../context/AuthContext";
@@ -29,6 +30,19 @@ const navItems = [
   { icon: Settings, label: "Configurações", path: "/configuracoes", hint: "sistema" },
 ];
 
+type ProfileStatus = "online" | "focus" | "busy" | "offline";
+
+const statusView: Record<ProfileStatus, { label: string; dot: string; helper: string }> = {
+  online: { label: "Online agora", dot: "bg-emerald-300", helper: "Clique para editar o perfil" },
+  focus: { label: "Em foco", dot: "bg-cyan-300", helper: "Modo concentração ativo" },
+  busy: { label: "Ocupado", dot: "bg-amber-300", helper: "Disponibilidade reduzida" },
+  offline: { label: "Offline", dot: "bg-slate-400", helper: "Aparece como indisponível" },
+};
+
+function normalizeProfileStatus(value: string | null): ProfileStatus {
+  return value === "focus" || value === "busy" || value === "offline" || value === "online" ? value : "online";
+}
+
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -36,6 +50,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [profileName, setProfileName] = useState(() => localStorage.getItem("@AgileTask:name") || "Gabriel");
   const [profilePhoto, setProfilePhoto] = useState(() => localStorage.getItem("@AgileTask:profilePhoto") || "");
+  const [profileStatus, setProfileStatus] = useState<ProfileStatus>(() => normalizeProfileStatus(localStorage.getItem("@AgileTask:profileStatus")));
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -47,6 +62,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     const sync = () => {
       setProfileName(localStorage.getItem("@AgileTask:name") || "Gabriel");
       setProfilePhoto(localStorage.getItem("@AgileTask:profilePhoto") || "");
+      setProfileStatus(normalizeProfileStatus(localStorage.getItem("@AgileTask:profileStatus")));
     };
     window.addEventListener("storage", sync);
     window.addEventListener("agiletask-profile-updated", sync);
@@ -60,6 +76,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     logout();
     toast.success("Logout realizado com sucesso!");
     navigate("/login");
+  };
+
+  const openProfileSettings = () => {
+    navigate("/configuracoes?tab=perfil");
+    onClose();
+    toast.info("Perfil aberto. Edite foto, nome e status aqui.");
   };
 
   const isActivePath = (path: string) =>
@@ -89,18 +111,25 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         )}
       </div>
 
-      <div className="relative mx-5 mb-5 overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.07] p-4 backdrop-blur-xl">
+      <button
+        type="button"
+        onClick={openProfileSettings}
+        className="group relative mx-5 mb-5 block overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.07] p-4 text-left backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-cyan-200/30 hover:bg-white/[0.1] focus:outline-none focus:ring-2 focus:ring-cyan-300/50"
+        title="Abrir perfil e status"
+      >
         <div className="absolute -right-10 -top-10 h-24 w-24 rounded-full bg-cyan-300/20 blur-2xl" />
-        <div className="flex items-center gap-3">
-          <div className="h-11 w-11 overflow-hidden rounded-2xl bg-gradient-to-br from-sky-300 to-violet-500 ring-2 ring-white/10 flex items-center justify-center font-black">
+        <div className="relative flex items-center gap-3">
+          <div className="h-11 w-11 overflow-hidden rounded-2xl bg-gradient-to-br from-sky-300 to-violet-500 ring-2 ring-white/10 flex items-center justify-center font-black text-white">
             {profilePhoto ? <img src={profilePhoto} className="h-full w-full object-cover" alt="Perfil" /> : profileName.charAt(0).toUpperCase()}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-bold text-white">{profileName}</div>
-            <div className="flex items-center gap-1 text-xs text-cyan-100/65"><span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> Online agora</div>
+            <div className="flex items-center gap-1 text-xs text-cyan-100/70"><span className={`h-1.5 w-1.5 rounded-full ${statusView[profileStatus].dot}`} /> {statusView[profileStatus].label}</div>
+            <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35 opacity-0 transition-opacity group-hover:opacity-100">{statusView[profileStatus].helper}</div>
           </div>
+          <UserCircle className="h-5 w-5 text-cyan-100/55 transition-colors group-hover:text-cyan-100" />
         </div>
-      </div>
+      </button>
 
       <nav className="relative flex-1 space-y-1.5 px-4">
         {navItems.map((item) => {
