@@ -286,7 +286,7 @@ const systemPrompt = (
 Responda sempre em português brasileiro, de forma curta, direta e útil.
 
 Regras:
-- Para modelos DeepSeek R1, o processamento pode vir em <think>...</think>; mantenha a resposta final fora desse bloco.
+- Para modelos DeepSeek R1, se você gerar processamento interno, envie esse processamento separado em <think>...</think> e mantenha a resposta final fora desse bloco.
 - Não use HTML, JSX ou CSS. Markdown básico é permitido.
 - Não diga que é ChatGPT; sua identidade aqui é Roby.
 - Se a pergunta envolver o app, use o contexto resumido abaixo.
@@ -1068,34 +1068,63 @@ function sanitizeModelText(value: string): string {
 
 function splitDeepSeekThinking(rawText: string): { thinking: string; answer: string; hasOpenThink: boolean } {
   const raw = String(rawText || "");
-  const openTag = raw.toLowerCase().indexOf("<think>");
+  const lowerRaw = raw.toLowerCase();
+  const openTag = lowerRaw.indexOf("<think>");
 
-  if (openTag === -1) {
-    return { thinking: "", answer: sanitizeModelText(raw), hasOpenThink: false };
-  }
+  // Formato mais comum na API: <think>...</think> + resposta final.
+  if (openTag !== -1) {
+    const afterOpen = openTag + "<think>".length;
+    const closeTag = lowerRaw.indexOf("</think>", afterOpen);
 
-  const afterOpen = openTag + "<think>".length;
-  const closeTag = raw.toLowerCase().indexOf("</think>", afterOpen);
+    if (closeTag === -1) {
+      const beforeThink = raw.slice(0, openTag);
+      const thinking = raw.slice(afterOpen);
+      return {
+        thinking: sanitizeModelText(thinking),
+        answer: sanitizeModelText(beforeThink),
+        hasOpenThink: true,
+      };
+    }
 
-  if (closeTag === -1) {
     const beforeThink = raw.slice(0, openTag);
-    const thinking = raw.slice(afterOpen);
+    const thinking = raw.slice(afterOpen, closeTag);
+    const afterThink = raw.slice(closeTag + "</think>".length);
+
     return {
       thinking: sanitizeModelText(thinking),
-      answer: sanitizeModelText(beforeThink),
+      answer: sanitizeModelText(`${beforeThink}\n${afterThink}`),
+      hasOpenThink: false,
+    };
+  }
+
+  // Alguns clientes/modelos exibem o raciocínio como "Thinking..." e encerram com
+  // "...done thinking.". Esse tratamento deixa o site parecido com o terminal do Ollama,
+  // separando processamento e resposta final quando esse formato vier no stream.
+  const thinkingStartMatch = raw.match(/(?:^|\n)\s*Thinking\.\.\.\s*\n/i);
+  if (thinkingStartMatch && thinkingStartMatch.index !== undefined) {
+    const thinkingStart = thinkingStartMatch.index + thinkingStartMatch[0].length;
+    const beforeThinking = raw.slice(0, thinkingStartMatch.index);
+    const rest = raw.slice(thinkingStart);
+    const doneMatch = rest.match(/(?:^|\n)\s*\.{3}\s*done thinking\.\s*\n?/i);
+
+    if (doneMatch && doneMatch.index !== undefined) {
+      const thinking = rest.slice(0, doneMatch.index);
+      const answer = `${beforeThinking}\n${rest.slice(doneMatch.index + doneMatch[0].length)}`;
+      return {
+        thinking: sanitizeModelText(thinking),
+        answer: sanitizeModelText(answer),
+        hasOpenThink: false,
+      };
+    }
+
+    return {
+      thinking: sanitizeModelText(rest),
+      answer: sanitizeModelText(beforeThinking),
       hasOpenThink: true,
     };
   }
 
-  const beforeThink = raw.slice(0, openTag);
-  const thinking = raw.slice(afterOpen, closeTag);
-  const afterThink = raw.slice(closeTag + "</think>".length);
-
-  return {
-    thinking: sanitizeModelText(thinking),
-    answer: sanitizeModelText(`${beforeThink}\n${afterThink}`),
-    hasOpenThink: false,
-  };
+  return { thinking: "", answer: sanitizeModelText(raw), hasOpenThink: false };
 }
 
 function finalAnswerFromOllamaRaw(rawText: string): string {
@@ -1257,12 +1286,29 @@ async function callOllama(
   if (!reader) {
     const data = await response.json();
     const content = typeof data.message?.content === "string" ? data.message.content : "";
+    const thinking =
+      typeof data.message?.thinking === "string"
+        ? data.message.thinking
+        : typeof data.thinking === "string"
+          ? data.thinking
+          : "";
+    const parsed = splitDeepSeekThinking(content);
+    const mergedThinking = sanitizeModelText([thinking, parsed.thinking].filter(Boolean).join("\n"));
+    onProgress?.({
+      raw: content,
+      thinking: mergedThinking,
+      answer: parsed.answer,
+      generation: sanitizeModelText(parsed.answer || content),
+      model: selectedModel,
+      done: true,
+    });
     return finalAnswerFromOllamaRaw(content || "Recebi sua mensagem. Posso ajudar você a criar, editar, concluir, desmarcar ou remover tarefas.");
   }
 
   const decoder = new TextDecoder();
   let buffer = "";
   let rawContent = "";
+  let rawThinking = "";
 
   while (true) {
     const { value, done } = await reader.read();
@@ -1279,12 +1325,21 @@ async function callOllama(
       try {
         const data = JSON.parse(trimmed);
         const token = typeof data.message?.content === "string" ? data.message.content : "";
+        const thinkingToken =
+          typeof data.message?.thinking === "string"
+            ? data.message.thinking
+            : typeof data.thinking === "string"
+              ? data.thinking
+              : "";
+
         rawContent += token;
+        rawThinking += thinkingToken;
 
         const parsed = splitDeepSeekThinking(rawContent);
+        const mergedThinking = sanitizeModelText([rawThinking, parsed.thinking].filter(Boolean).join("\n"));
         onProgress?.({
           raw: rawContent,
-          thinking: parsed.thinking,
+          thinking: mergedThinking,
           answer: parsed.answer,
           generation: sanitizeModelText(parsed.answer || rawContent),
           model: selectedModel,
@@ -1300,16 +1355,24 @@ async function callOllama(
     try {
       const data = JSON.parse(buffer.trim());
       const token = typeof data.message?.content === "string" ? data.message.content : "";
+      const thinkingToken =
+        typeof data.message?.thinking === "string"
+          ? data.message.thinking
+          : typeof data.thinking === "string"
+            ? data.thinking
+            : "";
       rawContent += token;
+      rawThinking += thinkingToken;
     } catch {
       /* ignore */
     }
   }
 
   const parsed = splitDeepSeekThinking(rawContent);
+  const mergedThinking = sanitizeModelText([rawThinking, parsed.thinking].filter(Boolean).join("\n"));
   onProgress?.({
     raw: rawContent,
-    thinking: parsed.thinking,
+    thinking: mergedThinking,
     answer: parsed.answer,
     generation: sanitizeModelText(parsed.answer || rawContent),
     model: selectedModel,
@@ -1786,7 +1849,7 @@ Verifique se o Ollama está rodando e se o modelo aparece em "ollama list". Se v
                                 : msg.isStreaming
                                   ? "Mostrar geração ao vivo"
                                   : msg.thinking
-                                    ? "Mostrar processamento da IA"
+                                    ? "Mostrar processamento do modelo"
                                     : "Mostrar geração da IA"}
                             </button>
 
