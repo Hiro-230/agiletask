@@ -9,6 +9,140 @@ interface Message {
   type: "ai" | "user";
   content: string;
   time: string;
+  thinking?: string;
+  generation?: string;
+  isStreaming?: boolean;
+  model?: string;
+}
+
+
+function renderInlineMarkdown(text: string) {
+  const nodes: Array<string | JSX.Element> = [];
+  const tokenRegex = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = tokenRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      nodes.push(text.slice(lastIndex, match.index));
+    }
+
+    const token = match[0];
+
+    if (token.startsWith("**") && token.endsWith("**")) {
+      nodes.push(
+        <strong key={`strong-${match.index}`} className="font-bold text-slate-50">
+          {token.slice(2, -2)}
+        </strong>,
+      );
+    } else if (token.startsWith("`") && token.endsWith("`")) {
+      nodes.push(
+        <code key={`code-${match.index}`} className="rounded-md border border-white/10 bg-white/10 px-1.5 py-0.5 text-[0.92em] text-cyan-100">
+          {token.slice(1, -1)}
+        </code>,
+      );
+    }
+
+    lastIndex = match.index + token.length;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+
+  return nodes.length ? nodes : text;
+}
+
+function RobyMarkdownMessage({ content }: { content: string }) {
+  const lines = content.replace(/\r\n/g, "\n").split("\n");
+  const blocks: JSX.Element[] = [];
+  let unorderedItems: string[] = [];
+  let orderedItems: string[] = [];
+
+  const flushUnorderedList = () => {
+    if (!unorderedItems.length) return;
+    const items = unorderedItems;
+    unorderedItems = [];
+    blocks.push(
+      <ul key={`ul-${blocks.length}`} className="my-2 list-disc space-y-1 pl-5 text-slate-100">
+        {items.map((item, index) => (
+          <li key={`ul-item-${index}`}>{renderInlineMarkdown(item)}</li>
+        ))}
+      </ul>,
+    );
+  };
+
+  const flushOrderedList = () => {
+    if (!orderedItems.length) return;
+    const items = orderedItems;
+    orderedItems = [];
+    blocks.push(
+      <ol key={`ol-${blocks.length}`} className="my-2 list-decimal space-y-1 pl-5 text-slate-100">
+        {items.map((item, index) => (
+          <li key={`ol-item-${index}`}>{renderInlineMarkdown(item)}</li>
+        ))}
+      </ol>,
+    );
+  };
+
+  const flushLists = () => {
+    flushUnorderedList();
+    flushOrderedList();
+  };
+
+  lines.forEach((rawLine) => {
+    const line = rawLine.trimEnd();
+
+    if (!line.trim()) {
+      flushLists();
+      return;
+    }
+
+    const heading = line.match(/^\s{0,3}(#{1,6})\s+(.+)$/);
+    if (heading) {
+      flushLists();
+      const level = Math.min(heading[1].length, 4);
+      const text = heading[2].trim();
+      const className =
+        level === 1
+          ? "mt-3 mb-2 text-lg font-extrabold text-slate-50"
+          : level === 2
+            ? "mt-3 mb-2 text-base font-extrabold text-slate-50"
+            : "mt-3 mb-1.5 text-sm font-extrabold text-slate-50";
+
+      blocks.push(
+        <div key={`heading-${blocks.length}`} className={className}>
+          {renderInlineMarkdown(text)}
+        </div>,
+      );
+      return;
+    }
+
+    const unordered = line.match(/^\s{0,3}[-*•]\s+(.+)$/);
+    if (unordered) {
+      flushOrderedList();
+      unorderedItems.push(unordered[1].trim());
+      return;
+    }
+
+    const ordered = line.match(/^\s{0,3}\d+[.)]\s+(.+)$/);
+    if (ordered) {
+      flushUnorderedList();
+      orderedItems.push(ordered[1].trim());
+      return;
+    }
+
+    flushLists();
+    blocks.push(
+      <p key={`p-${blocks.length}`} className="mb-2 text-slate-100 last:mb-0">
+        {renderInlineMarkdown(line.trim())}
+      </p>,
+    );
+  });
+
+  flushLists();
+
+  return <div className="break-words">{blocks}</div>;
 }
 
 const DEFAULT_OLLAMA_URL = "http://localhost:11434";
@@ -128,30 +262,40 @@ function normalizeOllamaUrl(value?: string | null): string {
   return finalUrl;
 }
 
+const buildCompactTaskContext = (tasks: Task[]): string => {
+  const sortedTasks = [...tasks]
+    .sort((a, b) => {
+      if (a.status === "done" && b.status !== "done") return 1;
+      if (a.status !== "done" && b.status === "done") return -1;
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    })
+    .slice(0, 8);
+
+  const lines = sortedTasks.map((t) => {
+    const status = t.status === "done" ? "Concluída" : t.status === "inProgress" ? "Em andamento" : "A fazer";
+    return `- ${t.title} | ${status} | ${t.priority} | ${t.date}`;
+  });
+
+  return lines.join("\n") || "Nenhuma tarefa cadastrada.";
+};
+
 const systemPrompt = (
   tasks: Task[],
   selectedModel: string,
-) => `Você é o Roby, assistente de IA do AgileTask, usando o modelo local ${selectedModel} via Ollama.
-Responda SEMPRE em português brasileiro.
+) => `Você é o Roby, assistente do AgileTask, usando ${selectedModel} via Ollama local.
+Responda sempre em português brasileiro, de forma curta, direta e útil.
 
-Você é um assistente geral: pode responder dúvidas de programação, estudos, produtividade, tecnologia, escrita, explicações, matemática básica, planejamento e temas gerais seguros. Não se limite apenas às tarefas do AgileTask.
+Regras:
+- Para modelos DeepSeek R1, o processamento pode vir em <think>...</think>; mantenha a resposta final fora desse bloco.
+- Não use HTML, JSX ou CSS. Markdown básico é permitido.
+- Não diga que é ChatGPT; sua identidade aqui é Roby.
+- Se a pergunta envolver o app, use o contexto resumido abaixo.
+- Ações de criar, editar, concluir, reabrir ou excluir tarefas são executadas pelo próprio AgileTask; não finja executar ações.
+- Nunca peça nem repita senhas, tokens, documentos, endereço completo, telefone, e-mail ou dados confidenciais.
 
-Regras de resposta:
-- Responda diretamente ao pedido do usuário.
-- Não diga que você é GPT-4, ChatGPT ou outro modelo. Sua identidade neste aplicativo é Roby com DeepSeek/Ollama local.
-- Não use tags <think> e não mostre raciocínio interno. Entregue somente a resposta final.
-- Não use HTML, JSX, CSS, <span>, <div> ou tags visuais na resposta. Use texto simples ou Markdown básico.
-- Se não souber uma informação pessoal do usuário, diga que não sabe; não invente.
-- Seja claro, útil e objetivo. Quando o assunto pedir detalhes, explique em etapas.
-- Se o usuário perguntar algo que depende do app, use o contexto abaixo.
-- Quando o usuário pedir ações como criar, concluir, desmarcar, excluir ou editar tarefas, o aplicativo executa essas ações fora do modelo por segurança; não finja executar ações.
-- Nunca peça, salve ou repita senhas, tokens, chaves de API, documentos, endereços completos, telefone, e-mail ou dados pessoais confidenciais dentro das tarefas.
-
-Contexto das tarefas do usuário no AgileTask:
-${tasks.map((t) => `- "${t.title}" | Status: ${t.status === "done" ? "Concluída" : t.status === "inProgress" ? "Em andamento" : "A fazer"} | Prioridade: ${t.priority} | Data: ${t.date} | Categoria: ${t.category}`).join("\n")}
-
-Total: ${tasks.length} tarefas. Concluídas: ${tasks.filter((t) => t.status === "done").length}. Pendentes: ${tasks.filter((t) => t.status !== "done").length}.`;
-
+Resumo das tarefas:
+Total: ${tasks.length}. Concluídas: ${tasks.filter((t) => t.status === "done").length}. Pendentes: ${tasks.filter((t) => t.status !== "done").length}.
+${buildCompactTaskContext(tasks)}`;
 
 
 function toLocalISODate(date: Date): string {
@@ -909,6 +1053,72 @@ function cleanOllamaAnswer(answer: string): string {
   return removeHtml(withoutTags) || "Não consegui gerar uma resposta final. Tente novamente.";
 }
 
+function sanitizeModelText(value: string): string {
+  return String(value || "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/\n{4,}/g, "\n\n\n")
+    .trim();
+}
+
+function splitDeepSeekThinking(rawText: string): { thinking: string; answer: string; hasOpenThink: boolean } {
+  const raw = String(rawText || "");
+  const openTag = raw.toLowerCase().indexOf("<think>");
+
+  if (openTag === -1) {
+    return { thinking: "", answer: sanitizeModelText(raw), hasOpenThink: false };
+  }
+
+  const afterOpen = openTag + "<think>".length;
+  const closeTag = raw.toLowerCase().indexOf("</think>", afterOpen);
+
+  if (closeTag === -1) {
+    const beforeThink = raw.slice(0, openTag);
+    const thinking = raw.slice(afterOpen);
+    return {
+      thinking: sanitizeModelText(thinking),
+      answer: sanitizeModelText(beforeThink),
+      hasOpenThink: true,
+    };
+  }
+
+  const beforeThink = raw.slice(0, openTag);
+  const thinking = raw.slice(afterOpen, closeTag);
+  const afterThink = raw.slice(closeTag + "</think>".length);
+
+  return {
+    thinking: sanitizeModelText(thinking),
+    answer: sanitizeModelText(`${beforeThink}\n${afterThink}`),
+    hasOpenThink: false,
+  };
+}
+
+function finalAnswerFromOllamaRaw(rawText: string): string {
+  const parsed = splitDeepSeekThinking(rawText);
+  const finalAnswer = parsed.answer.trim();
+
+  if (finalAnswer) return cleanOllamaAnswer(finalAnswer);
+  if (parsed.thinking.trim()) {
+    return "O DeepSeek gerou o processamento, mas ainda não entregou uma resposta final. Abra o painel de processamento para acompanhar o que foi gerado.";
+  }
+
+  return "Não consegui gerar uma resposta final. Tente perguntar novamente de forma mais direta.";
+}
+
+interface OllamaProgress {
+  raw: string;
+  thinking: string;
+  answer: string;
+  generation: string;
+  model: string;
+  done: boolean;
+}
+
 
 interface OllamaTagModel {
   name?: string;
@@ -922,6 +1132,16 @@ const MODEL_PRIORITY = [
   "deepseek-r1:14b",
   "deepseek-r1:32b",
 ];
+
+const OLLAMA_REQUEST_TIMEOUT_MS = 300000; // 5 minutos: permite respostas abertas do DeepSeek sem cortar rápido demais
+const OLLAMA_MODEL_CACHE_MS = 60000;
+let cachedModelResolution: { baseUrl: string; requested: string; resolved: string; expiresAt: number } | null = null;
+
+function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = OLLAMA_REQUEST_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...init, signal: controller.signal }).finally(() => window.clearTimeout(timeout));
+}
 
 async function getInstalledOllamaModels(baseUrl: string): Promise<string[]> {
   const cleanBaseUrl = normalizeOllamaUrl(baseUrl);
@@ -949,12 +1169,30 @@ function pickBestLocalModel(installedModels: string[], requestedModel: string): 
 
 async function resolveOllamaModel(baseUrl: string, requestedModel: string): Promise<string> {
   const selectedModel = normalizeOllamaModel(requestedModel);
+  const now = Date.now();
+
+  if (
+    cachedModelResolution &&
+    cachedModelResolution.baseUrl === baseUrl &&
+    cachedModelResolution.requested === selectedModel &&
+    cachedModelResolution.expiresAt > now
+  ) {
+    return cachedModelResolution.resolved;
+  }
+
   const installed = await getInstalledOllamaModels(baseUrl);
   const best = pickBestLocalModel(installed, selectedModel);
 
   if (best !== selectedModel) {
     localStorage.setItem("@AgileTask:aiModel", best);
   }
+
+  cachedModelResolution = {
+    baseUrl,
+    requested: selectedModel,
+    resolved: best,
+    expiresAt: now + OLLAMA_MODEL_CACHE_MS,
+  };
 
   return best;
 }
@@ -965,13 +1203,14 @@ async function callOllama(
   tasks: Task[],
   baseUrl: string,
   model: string,
+  onProgress?: (progress: OllamaProgress) => void,
 ): Promise<string> {
   const cleanBaseUrl = normalizeOllamaUrl(baseUrl);
   const selectedModel = await resolveOllamaModel(cleanBaseUrl, model);
   const messages = [
     { role: "system", content: systemPrompt(tasks, selectedModel) },
     ...history
-      .slice(-8)
+      .slice(-3)
       .map((m) => ({
         role: m.type === "ai" ? "assistant" : "user",
         content: m.content,
@@ -979,7 +1218,7 @@ async function callOllama(
     { role: "user", content: userMessage },
   ];
 
-  const response = await fetch(`${cleanBaseUrl}/api/chat`, {
+  const response = await fetchWithTimeout(`${cleanBaseUrl}/api/chat`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -987,15 +1226,15 @@ async function callOllama(
     body: JSON.stringify({
       model: selectedModel,
       messages,
-      stream: false,
+      stream: true,
       keep_alive: "30m",
       options: {
-        temperature: 0.12,
-        top_k: 30,
-        top_p: 0.8,
-        num_ctx: 3072,
-        num_predict: 700,
-        num_thread: 8,
+        temperature: 0.1,
+        top_k: 20,
+        top_p: 0.75,
+        num_ctx: 2048,
+        num_predict: 900,
+        num_thread: 6,
         repeat_penalty: 1.08,
       },
     }),
@@ -1011,14 +1250,81 @@ async function callOllama(
     throw new Error(`HTTP ${response.status}: ${body || response.statusText}`);
   }
 
-  const data = await response.json();
-  const content = typeof data.message?.content === "string" ? data.message.content : "";
-  return cleanOllamaAnswer(content || "Recebi sua mensagem. Posso ajudar você a criar, editar, concluir, desmarcar ou remover tarefas.");
+  // O Ollama com stream=true envia JSON por linha. Isso permite atualizar a tela
+  // enquanto o DeepSeek ainda está processando, sem deixar o usuário preso apenas
+  // na mensagem "Pensando...".
+  const reader = response.body?.getReader();
+  if (!reader) {
+    const data = await response.json();
+    const content = typeof data.message?.content === "string" ? data.message.content : "";
+    return finalAnswerFromOllamaRaw(content || "Recebi sua mensagem. Posso ajudar você a criar, editar, concluir, desmarcar ou remover tarefas.");
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let rawContent = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      try {
+        const data = JSON.parse(trimmed);
+        const token = typeof data.message?.content === "string" ? data.message.content : "";
+        rawContent += token;
+
+        const parsed = splitDeepSeekThinking(rawContent);
+        onProgress?.({
+          raw: rawContent,
+          thinking: parsed.thinking,
+          answer: parsed.answer,
+          generation: sanitizeModelText(parsed.answer || rawContent),
+          model: selectedModel,
+          done: Boolean(data.done),
+        });
+      } catch {
+        // Mantém a geração viva se uma linha parcial chegar quebrada.
+      }
+    }
+  }
+
+  if (buffer.trim()) {
+    try {
+      const data = JSON.parse(buffer.trim());
+      const token = typeof data.message?.content === "string" ? data.message.content : "";
+      rawContent += token;
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const parsed = splitDeepSeekThinking(rawContent);
+  onProgress?.({
+    raw: rawContent,
+    thinking: parsed.thinking,
+    answer: parsed.answer,
+    generation: sanitizeModelText(parsed.answer || rawContent),
+    model: selectedModel,
+    done: true,
+  });
+
+  return finalAnswerFromOllamaRaw(rawContent || "Recebi sua mensagem. Posso ajudar você a criar, editar, concluir, desmarcar ou remover tarefas.");
 }
 
 function parseOllamaError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
 
+  if (msg.includes("AbortError") || msg.includes("aborted")) {
+    return "o DeepSeek demorou mais que o limite configurado. Usei uma resposta rápida do próprio AgileTask";
+  }
   if (
     msg.includes("Failed to fetch") ||
     msg.includes("NetworkError") ||
@@ -1130,6 +1436,12 @@ function appendRobyMessage(message: Message) {
   setRobyGlobalMessages((previous) => [...previous, message]);
 }
 
+function updateRobyMessage(messageId: string, updater: (message: Message) => Message) {
+  setRobyGlobalMessages((previous) =>
+    previous.map((message) => (message.id === messageId ? updater(message) : message)),
+  );
+}
+
 function setRobyGlobalLoading(value: boolean) {
   robyGlobalIsLoading = value;
   notifyRobyListeners();
@@ -1163,6 +1475,7 @@ export function AIAssistant() {
   const { tasks, addTask, updateTask, updateTaskStatus, deleteTask } = useTasks();
   const { messages, isLoading } = useRobyGlobalChatState();
   const [input, setInput] = useState("");
+  const [openThinkingIds, setOpenThinkingIds] = useState<Set<string>>(() => new Set());
   const [isRestarting, setIsRestarting] = useState(false);
   const [ollamaUrl, setOllamaUrl] = useState(
     () => normalizeOllamaUrl(localStorage.getItem("@AgileTask:ollamaUrl")),
@@ -1198,13 +1511,25 @@ export function AIAssistant() {
     }
   }, [messages, isLoading]);
 
+  const toggleThinkingPanel = (messageId: string) => {
+    setOpenThinkingIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(messageId)) {
+        next.delete(messageId);
+      } else {
+        next.add(messageId);
+      }
+      return next;
+    });
+  };
+
   const handleSend = async (e: React.FormEvent | null, quickMsg?: string) => {
     if (e) e.preventDefault();
     const text = quickMsg || input;
     if (!text.trim() || robyGlobalIsLoading) return;
 
     const requestVersion = ++robyRequestVersion;
-    const historyBeforeSend = getRobyGlobalMessages().slice(-8);
+    const historyBeforeSend = getRobyGlobalMessages().slice(-3);
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -1216,6 +1541,8 @@ export function AIAssistant() {
     appendRobyMessage(userMessage);
     setInput("");
     setRobyGlobalLoading(true);
+
+    let aiMessageId: string | null = null;
 
     try {
       let responseText: string;
@@ -1233,14 +1560,46 @@ export function AIAssistant() {
         const deterministicAnswer = getDeterministicGeneralAnswer(text, tasks, aiModel);
         if (deterministicAnswer) {
           responseText = deterministicAnswer;
+        } else if (shouldAnswerInstantly(text)) {
+          // Para demonstração e uso diário, perguntas do próprio AgileTask respondem instantaneamente.
+          // Isso evita depender do tempo de geração do DeepSeek para ações como resumo, atrasadas, Kanban e prioridades.
+          responseText = getSmartFallback(text, tasks);
         } else if (useOllama) {
-          // Modo direto: tudo que não é ação vai diretamente para o DeepSeek local.
+          // Perguntas realmente gerais continuam indo para o DeepSeek local.
+          // Agora usamos stream para mostrar a geração ao vivo. Se o modelo enviar <think>,
+          // também mostramos esse bloco; se não enviar, o painel acompanha a própria resposta final.
+          aiMessageId = `${Date.now() + 1}-stream`;
+          appendRobyMessage({
+            id: aiMessageId,
+            type: "ai",
+            content: "Conectando ao DeepSeek local...",
+            thinking: "",
+            generation: "Preparando conexão com o Ollama local...",
+            isStreaming: true,
+            model: aiModel,
+            time: format(new Date(), "HH:mm"),
+          });
+
           responseText = await callOllama(
             text,
             historyBeforeSend,
             tasks,
             ollamaUrl,
             aiModel,
+            (progress) => {
+              if (robyRequestVersion !== requestVersion || !aiMessageId) return;
+              updateRobyMessage(aiMessageId, (message) => ({
+                ...message,
+                content:
+                  progress.answer.trim() ||
+                  progress.generation.trim() ||
+                  "O DeepSeek está gerando sua resposta localmente. Use o botão abaixo para acompanhar a geração ao vivo.",
+                thinking: progress.thinking,
+                generation: progress.generation || progress.raw,
+                model: progress.model,
+                isStreaming: !progress.done,
+              }));
+            },
           );
         } else {
           responseText = "A IA local está desativada em Configurações > IA & API. Ative o DeepSeek local para eu responder diretamente pelo modelo.";
@@ -1249,26 +1608,45 @@ export function AIAssistant() {
 
       if (robyRequestVersion !== requestVersion) return;
 
-      appendRobyMessage({
-        id: (Date.now() + 1).toString(),
-        type: "ai",
-        content: responseText,
-        time: format(new Date(), "HH:mm"),
-      });
+      if (aiMessageId) {
+        updateRobyMessage(aiMessageId, (message) => ({
+          ...message,
+          content: responseText,
+          generation: message.generation || responseText,
+          isStreaming: false,
+        }));
+      } else {
+        appendRobyMessage({
+          id: (Date.now() + 1).toString(),
+          type: "ai",
+          content: responseText,
+          time: format(new Date(), "HH:mm"),
+        });
+      }
     } catch (err) {
       if (robyRequestVersion !== requestVersion) return;
 
       const errorDetail = parseOllamaError(err);
-      appendRobyMessage({
-        id: (Date.now() + 1).toString(),
-        type: "ai",
-        content: `⚠️ Não consegui responder pelo DeepSeek local agora.
+      const errorContent = `⚠️ Não consegui responder pelo DeepSeek local agora.
 
 Detalhe: ${errorDetail}.
 
-Verifique se o Ollama está rodando e se o modelo aparece em "ollama list". Se você tiver baixado outro modelo, eu tento detectar automaticamente o modelo DeepSeek instalado.`,
-        time: format(new Date(), "HH:mm"),
-      });
+Verifique se o Ollama está rodando e se o modelo aparece em "ollama list". Se você tiver baixado outro modelo, eu tento detectar automaticamente o modelo DeepSeek instalado.`;
+
+      if (aiMessageId) {
+        updateRobyMessage(aiMessageId, (message) => ({
+          ...message,
+          content: errorContent,
+          isStreaming: false,
+        }));
+      } else {
+        appendRobyMessage({
+          id: (Date.now() + 1).toString(),
+          type: "ai",
+          content: errorContent,
+          time: format(new Date(), "HH:mm"),
+        });
+      }
     } finally {
       if (robyRequestVersion === requestVersion) {
         setRobyGlobalLoading(false);
@@ -1377,22 +1755,70 @@ Verifique se o Ollama está rodando e se o modelo aparece em "ollama list". Se v
                     <span className="text-xs text-slate-400">{msg.time}</span>
                   </div>
                   <div
-                    className={`px-4 py-3 rounded-2xl shadow-sm text-sm leading-relaxed whitespace-pre-line
+                    className={`px-4 py-3 rounded-2xl shadow-sm text-sm leading-relaxed
                     ${
                       msg.type === "user"
-                        ? "bg-gradient-to-r from-cyan-400 to-blue-600 text-white rounded-tr-none"
+                        ? "whitespace-pre-line bg-gradient-to-r from-cyan-400 to-blue-600 text-white rounded-tr-none"
                         : "bg-slate-950/55 text-slate-100 border border-white/10 rounded-tl-none"
                     }
                   `}
                   >
-                    {msg.content}
+                    {msg.type === "ai" ? (
+                      <>
+                        <RobyMarkdownMessage
+                          content={
+                            msg.content ||
+                            (msg.isStreaming
+                              ? "O DeepSeek está preparando a resposta final..."
+                              : "")
+                          }
+                        />
+
+                        {(msg.thinking || msg.generation || msg.isStreaming) && (
+                          <div className="mt-3 border-t border-white/10 pt-3">
+                            <button
+                              type="button"
+                              onClick={() => toggleThinkingPanel(msg.id)}
+                              className="inline-flex items-center gap-2 rounded-xl border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-xs font-bold text-cyan-100 transition-colors hover:bg-cyan-300/15"
+                            >
+                              {openThinkingIds.has(msg.id)
+                                ? "Ocultar geração da IA"
+                                : msg.isStreaming
+                                  ? "Mostrar geração ao vivo"
+                                  : msg.thinking
+                                    ? "Mostrar processamento da IA"
+                                    : "Mostrar geração da IA"}
+                            </button>
+
+                            {openThinkingIds.has(msg.id) && (
+                              <div className="mt-2 max-h-64 overflow-y-auto rounded-2xl border border-white/10 bg-black/25 p-3 text-xs leading-relaxed text-slate-300">
+                                <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-200">
+                                  {msg.isStreaming && (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  )}
+                                  {msg.thinking ? "Processamento do modelo" : "Geração ao vivo do modelo"} {msg.model ? `(${msg.model})` : ""}
+                                </div>
+                                <pre className="whitespace-pre-wrap break-words font-mono">
+                                  {msg.thinking?.trim() ||
+                                    msg.generation?.trim() ||
+                                    msg.content?.trim() ||
+                                    "Aguardando o DeepSeek enviar a primeira parte da resposta..."}
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      msg.content
+                    )}
                   </div>
                 </div>
               </motion.div>
             ))}
           </AnimatePresence>
 
-          {isLoading && (
+          {isLoading && !messages.some((message) => message.isStreaming) && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}

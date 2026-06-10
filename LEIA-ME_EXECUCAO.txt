@@ -1,0 +1,34 @@
+AGILETASK - Execução local
+
+Requisitos recomendados:
+- Node.js 20.x
+- npm
+- Ollama instalado, caso queira testar a IA local DeepSeek
+
+Comandos para executar a aplicação:
+
+1) Entrar na pasta do projeto:
+cd agiletask_entrega_codigo
+
+2) Instalar dependências:
+npm install
+
+3) Verificar vulnerabilidades:
+npm audit
+
+4) Rodar localmente:
+npm run dev
+
+5) Acessar no navegador:
+http://localhost:5173/
+
+Comandos para IA local com Ollama/DeepSeek:
+
+sudo systemctl start ollama
+curl http://localhost:11434/api/tags
+ollama run deepseek-r1:1.5b
+
+Observações:
+- O projeto já inclui a pasta dist com build pronto.
+- O código-fonte está em src/.
+- O React Router foi atualizado para 7.16.0, removendo a vulnerabilidade indicada pelo npm audit.
